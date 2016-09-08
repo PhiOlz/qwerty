@@ -1,10 +1,12 @@
 import os
-import re
-from string import letters
-
 import webapp2
 import jinja2
-
+import hashlib
+import hmac
+import random
+import re
+import string
+#from string import letters
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -47,6 +49,18 @@ class Post(db.Model):
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", p = self)
+
+# User registration table
+# Every entity in the AppEngine has a unique key and id
+#Users().key().id()
+class Users(db.Model):
+    username = db.StringProperty(required = True)
+    password = db.TextProperty(required = True)
+    email = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+
+# Register a new user in users table
 
 class BlogFront(BlogHandler):
     def get(self):
@@ -108,6 +122,51 @@ EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
+## Cookie related functions
+SECRET='t0p5ecret'
+def hash_str(s):
+    #return hashlib.md5(s).hexdigest();
+    return hmac.new(SECRET, s).hexdigest();
+
+# Function takes a string 
+# and returns a string of the format: s|HASH
+def make_secure_val(s):
+    #return s+"|"+hash_str(s);
+    return '%s|%s' %(s, hash_str(s))
+
+# -----------------
+# User Instructions
+# 
+# Implement the function check_secure_val, which takes a string of the format 
+# s,HASH
+# and returns s if hash_str(s) == HASH, otherwise None 
+def check_secure_val(h):
+    val = h.split('|')[0]
+    if h == make_secure_val(val) :
+        return int(val)
+    else :
+        return 0
+
+# Password related functions
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in xrange(5))
+
+def make_pw_hash(name, pw, salt=None):
+    if not salt:
+        salt = make_salt()
+    dig = hashlib.sha256(name+pw+salt).hexdigest()
+    return '%s,%s' %(dig, salt)    
+#    return hashlib.sha256(name+pw+salt).hexdigest() + ',' + salt
+
+def valid_pw(user, pw, h):
+    salt = h.split(',')[1]
+    return h==make_pw_hash(user, pw, salt)
+    
+def check_user_exist(username):
+    query = datamodel.User().all()
+    for result in query:
+        print result.key().id()
+        
 class Signup(BlogHandler):
 
     def get(self):
@@ -141,22 +200,51 @@ class Signup(BlogHandler):
         if have_error:
             self.render('signup-form.html', **params)
         else:
-            self.redirect('/unit2/welcome?username=' + username)
+            #check if user already exist
+            cursor = db.GqlQuery(
+                "SELECT * FROM Users WHERE username='" + username +"'")
+            if not cursor:
+                # Save user in table
+                # No plain text password:
+                pass_digest = make_pw_hash(username, password)
+                u = Users(username = username,
+                    password = pass_digest,
+                    email = email);
+                u.put();
+                uid = u.key().id();
+                # Set uid|hash - cookie.
+                uid_cookie = make_secure_val(str(uid))
+                self.response.headers.add_header('Set-Cookie',
+                    'uid=%s;Path=/' %uid_cookie)
+                #self.redirect('/blog/welcome?username=' + username)
+                self.redirect('/blog/welcome')
+            else :
+                params['error_username'] = "User already exist."
+                self.render('signup-form.html', **params)
 
 class Welcome(BlogHandler):
     def get(self):
-        username = self.request.get('username')
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        else: # try to get from URL
+            username = self.request.get('username')
         if valid_username(username):
             self.render('welcome.html', username = username)
         else:
-            self.redirect('/unit2/signup')
+            self.redirect('/blog/signup')
 
-app = webapp2.WSGIApplication([('/', MainPage),
-                               ('/unit2/rot13', Rot13),
-                               ('/unit2/signup', Signup),
-                               ('/unit2/welcome', Welcome),
-                               ('/blog/?', BlogFront),
-                               ('/blog/([0-9]+)', PostPage),
-                               ('/blog/newpost', NewPost),
-                               ],
-                              debug=True)
+app = webapp2.WSGIApplication([
+       ('/', MainPage),
+       ('/unit2/rot13', Rot13),
+       ('/blog/signup', Signup),
+       ('/blog/welcome', Welcome),
+       ('/blog/?', BlogFront),
+       ('/blog/([0-9]+)', PostPage),
+       ('/blog/newpost', NewPost),
+       ],
+      debug=True)
