@@ -56,7 +56,7 @@ class Post(db.Model):
 class Users(db.Model):
     username = db.StringProperty(required = True)
     password = db.TextProperty(required = True)
-    email = db.TextProperty(required = True)
+    email = db.TextProperty()#(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
@@ -166,6 +166,34 @@ def check_user_exist(username):
     query = datamodel.User().all()
     for result in query:
         print result.key().id()
+
+class Login(BlogHandler):
+
+    def get(self):
+        self.render("login-form.html")
+
+    def post(self):
+        username = self.request.get('username')
+        password = self.request.get('password')
+        params = dict(username = username)
+        have_error = True
+        params['error_username'] = "Invalid user or passowrd."
+        cursor = db.GqlQuery(
+             "SELECT * FROM Users WHERE username='" + username +"' LIMIT 1")
+
+        if cursor:
+            for user in cursor:
+                if username == user.username:
+                   if valid_pw(username, password, user.password):
+                        # Set uid|hash - cookie.
+                        uid = user.key().id()
+                        uid_cookie = make_secure_val(str(uid))
+                        self.response.headers.add_header('Set-Cookie',
+                                        'uid=%s;Path=/' %uid_cookie)
+                        self.redirect('/blog/welcome')
+                        have_error = False
+        if (have_error):
+            self.render('login-form.html', **params)
         
 class Signup(BlogHandler):
 
@@ -192,18 +220,30 @@ class Signup(BlogHandler):
         elif password != verify:
             params['error_verify'] = "Your passwords didn't match."
             have_error = True
-
-        if not valid_email(email):
-            params['error_email'] = "That's not a valid email."
-            have_error = True
-
+        # ptional
+        if email :
+            if not valid_email(email):
+                params['error_email'] = "That's not a valid email."
+                have_error = True
+        else:
+            email = ""
+            
         if have_error:
             self.render('signup-form.html', **params)
         else:
             #check if user already exist
             cursor = db.GqlQuery(
                 "SELECT * FROM Users WHERE username='" + username +"'")
-            if not cursor:
+            if cursor:
+                for user in cursor:
+                    if username == user.username:
+                        params['error_username'] = "User already exist."
+                        have_error = True
+
+            if have_error:
+                params['error_username'] = "User already exist."
+                self.render('signup-form.html', **params)
+            else :
                 # Save user in table
                 # No plain text password:
                 pass_digest = make_pw_hash(username, password)
@@ -217,10 +257,7 @@ class Signup(BlogHandler):
                 self.response.headers.add_header('Set-Cookie',
                     'uid=%s;Path=/' %uid_cookie)
                 #self.redirect('/blog/welcome?username=' + username)
-                self.redirect('/blog/welcome')
-            else :
-                params['error_username'] = "User already exist."
-                self.render('signup-form.html', **params)
+                self.redirect('/blog/welcome')            
 
 class Welcome(BlogHandler):
     def get(self):
@@ -241,6 +278,7 @@ class Welcome(BlogHandler):
 app = webapp2.WSGIApplication([
        ('/', MainPage),
        ('/unit2/rot13', Rot13),
+       ('/blog/login', Login),
        ('/blog/signup', Signup),
        ('/blog/welcome', Welcome),
        ('/blog/?', BlogFront),
