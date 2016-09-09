@@ -1,19 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <link type="text/css" rel="stylesheet" href="/static/main.css" />
-
-  <title>CS 253 Blog</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link type="text/css" rel="stylesheet" href="/static/main.css" />
+    <title>CS 253 Blog</title>
 </head>
 
 <body>
-  <a href="/blog" class="main-title">
-    CS 253 Blog
-  </a>
-
+    <header class="header">
+    <table width="100%"><tr>
+        <th align='left'>
+            <a href="/blog" class="main-title">CS 253 Blog </a>
+        </th><th align="right">
+            <a href="/blog/logout">Logout &nbsp;({{username}})</a>
+        </th></tr>
+        <tr><td>&nbsp;</td> <td align='right'><a href="/blog/newpost"> Post a blog</a></td></tr>        
+        <tr><td colspan=2> <hr></td></tr>
+        
+    </table>
+    </header>
   <div id="content">
-  {% block content %}
-  {% endblock %}
+    {% block content %}
+    {% endblock %}
   </div>
 </body>
 

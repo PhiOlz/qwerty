@@ -60,13 +60,38 @@ class Users(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
-# Register a new user in users table
+#Comment on blog posts by user
+# One user can post multiple comments
+# Comments are arranged by time created.
+class Comments(db.Model):
+    post_id = db.IntegerProperty(required = True)
+    user_id = db.IntegerProperty(required = True)
+    like = db.IntegerProperty()#required = True)
+    comment = db.TextProperty()#required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
 
+# /blog/?        
 class BlogFront(BlogHandler):
     def get(self):
-        posts = db.GqlQuery("select * from Post order by created desc limit 10")
-        self.render('front.html', posts = posts)
+        # if user logged in render blog else
+        # redirect to login 
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
 
+        if not valid_username(username):
+            self.redirect('/blog/login')
+            #self.render('welcome.html', username = username)
+        else:
+            posts = db.GqlQuery("select * from Post order by created desc limit 10")
+            #Enhance to take comments
+            self.render('front.html', posts = posts, username=username)
+
+#Posting a page leads to a perma link.
 class PostPage(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -75,25 +100,55 @@ class PostPage(BlogHandler):
         if not post:
             self.error(404)
             return
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username):
+            self.render("permalink.html", post = post, username=username)
+        else:
+            self.redirect('/blog/login')
+        
 
-        self.render("permalink.html", post = post)
-
+# Check if user is logged in, if not redirect to login.
 class NewPost(BlogHandler):
     def get(self):
-        self.render("newpost.html")
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username):
+            self.render('newpost.html', username = username)
+        else:
+            self.redirect('/blog/login')        
 
     def post(self):
-        subject = self.request.get('subject')
-        content = self.request.get('content')
+        # Validate user
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username):        
+            subject = self.request.get('subject')
+            content = self.request.get('content')
 
-        if subject and content:
-            p = Post(parent = blog_key(), subject = subject, content = content)
-            p.put()
-            self.redirect('/blog/%s' % str(p.key().id()))
+            if subject and content:
+                p = Post(parent = blog_key(), subject = subject, content = content)
+                p.put()
+                self.redirect('/blog/%s' % str(p.key().id()))
+            else:
+                error = "subject and content, please!"
+                self.render("newpost.html", subject=subject, 
+                            content=content, error=error, username = username)
         else:
-            error = "subject and content, please!"
-            self.render("newpost.html", subject=subject, content=content, error=error)
-
+            self.redirect('/blog/login')
 
 
 ###### Unit 2 HW's
@@ -167,8 +222,8 @@ def check_user_exist(username):
     for result in query:
         print result.key().id()
 
+# Login takes to front page
 class Login(BlogHandler):
-
     def get(self):
         self.render("login-form.html")
 
@@ -190,11 +245,19 @@ class Login(BlogHandler):
                         uid_cookie = make_secure_val(str(uid))
                         self.response.headers.add_header('Set-Cookie',
                                         'uid=%s;Path=/' %uid_cookie)
-                        self.redirect('/blog/welcome')
+                        self.redirect('/blog/')
                         have_error = False
         if (have_error):
             self.render('login-form.html', **params)
-        
+
+# logout - take to login
+class Logout(BlogHandler):
+    def get(self):
+        # clear cookie.
+        self.response.headers.add_header(
+                'Set-Cookie', 'uid=;Path=/;')
+        self.redirect('/blog/login')
+            
 class Signup(BlogHandler):
 
     def get(self):
@@ -278,6 +341,7 @@ class Welcome(BlogHandler):
 app = webapp2.WSGIApplication([
        ('/', MainPage),
        ('/unit2/rot13', Rot13),
+       ('/blog/logout', Logout),
        ('/blog/login', Login),
        ('/blog/signup', Signup),
        ('/blog/welcome', Welcome),
