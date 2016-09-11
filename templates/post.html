@@ -16,13 +16,13 @@
   <div class="post-footer">
     <!--<form action='/blog/comment' method='get'> -->
         <div class="post-comment">      
-            <a href='/blog/comment?post_id=10'>Add Comment</a>
+            <a href='/blog/comment?post_id={{p.key().id()}}'>Add Comment</a>
             &nbsp;&nbsp;&nbsp;
             <a href='/blog/likepost/{{p.key().id()}}'>Like It</a>
             <!--<input type=submit value="Add Comment"> </input>-->
         </div>
-        <div class='post-likes'>    
-            <b>Comments:&nbsp;</b> 10
+        <div class='post-likes'>
+            <b>Comments:&nbsp;</b> {{p.count_comment}}
             &nbsp;&nbsp;&nbsp;&nbsp;
             <b>Likes:&nbsp</b> {{p.count_like}}
         </div>
