@@ -5,7 +5,7 @@
     </div>
 
     <div class="post-date">
-      By: Ajay &nbsp;&nbsp;
+      By: {{p.created_by | getusername}} &nbsp;&nbsp;
       {{p.created.strftime("%b %d, %Y")}}
     </div>
   </div>
@@ -18,13 +18,13 @@
         <div class="post-comment">      
             <a href='/blog/comment?post_id=10'>Add Comment</a>
             &nbsp;&nbsp;&nbsp;
-            <a href='/blog/likeit?post_id=10'>Like It</a>
+            <a href='/blog/likepost/{{p.key().id()}}'>Like It</a>
             <!--<input type=submit value="Add Comment"> </input>-->
         </div>
         <div class='post-likes'>    
             <b>Comments:&nbsp;</b> 10
             &nbsp;&nbsp;&nbsp;&nbsp;
-            <b>Likes:&nbsp</b> 10
+            <b>Likes:&nbsp</b> {{p.count_like}}
         </div>
     <!-- </form> -->
   </div>

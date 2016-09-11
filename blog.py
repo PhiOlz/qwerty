@@ -6,12 +6,19 @@ import hmac
 import random
 import re
 import string
+from jinja2 import filters, environment
 #from string import letters
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
+# create a flter to get user name from ID
+def getusername(uid):
+    return Users.get_by_id(uid).username
+    
+#Register the filter with Environment
+jinja_env.filters['getusername'] = getusername
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -44,6 +51,8 @@ class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     created_by = db.IntegerProperty(required = True)
+    count_like = db.IntegerProperty(default=0)
+    count_comment = db.IntegerProperty(default=0)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
@@ -119,7 +128,42 @@ class PostPage(BlogHandler):
             self.render("permalink.html", post = post, username=username)
         else:
             self.redirect('/blog/login')
-        
+# type of self is webapp.RequestHandler
+# refresh the same page.
+class LikePost(BlogHandler):
+    def get(self, post_id):
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+            
+        if valid_username(username):
+            # User already liked - than no processing
+            likes = db.GqlQuery("select * from Likes where " +
+                                " user_id=" + str(uid) + 
+                                " and post_id=" + str(post_id));
+            for like in likes:
+                if (like.user_id == uid and
+                    like.post_id == int(post_id)) :
+                    self.redirect('/blog/'+post_id)
+                    return
+                
+            #Update post like count
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)            
+            if post:
+                post.count_like = post.count_like+1;
+                post.put()                
+                # Create Likes - to restrict multiple likes 
+                like = Likes(post_id=int(post_id),
+                             user_id=uid, like=1)
+                like.put()
+                self.redirect('/blog/'+post_id)                
+            else:
+                self.redirect('/blog/')
+
 
 # Check if user is logged in, if not redirect to login.
 class NewPost(BlogHandler):
@@ -350,6 +394,7 @@ class Welcome(BlogHandler):
         else:
             self.redirect('/blog/signup')
 
+            
 class FlushDb(BlogHandler):
     def get(self):
         # Delete all Post
@@ -384,6 +429,7 @@ app = webapp2.WSGIApplication([
        ('/blog/?', BlogFront),
        ('/blog/([0-9]+)', PostPage),
        ('/blog/newpost', NewPost),
+       ('/blog/likepost/([0-9]+)', LikePost),
        ('/blog/flushdb', FlushDb),
        ],
       debug=True)
