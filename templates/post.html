@@ -5,11 +5,27 @@
     </div>
 
     <div class="post-date">
+      By: Ajay &nbsp;&nbsp;
       {{p.created.strftime("%b %d, %Y")}}
     </div>
   </div>
 
   <div class="post-content">
     {{p._render_text | safe}}
+  </div>
+  <div class="post-footer">
+    <!--<form action='/blog/comment' method='get'> -->
+        <div class="post-comment">      
+            <a href='/blog/comment?post_id=10'>Add Comment</a>
+            &nbsp;&nbsp;&nbsp;
+            <a href='/blog/likeit?post_id=10'>Like It</a>
+            <!--<input type=submit value="Add Comment"> </input>-->
+        </div>
+        <div class='post-likes'>    
+            <b>Comments:&nbsp;</b> 10
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <b>Likes:&nbsp</b> 10
+        </div>
+    <!-- </form> -->
   </div>
 </div>

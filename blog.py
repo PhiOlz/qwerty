@@ -43,6 +43,7 @@ def blog_key(name = 'default'):
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
+    created_by = db.IntegerProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
@@ -66,19 +67,27 @@ class Users(db.Model):
 class Comments(db.Model):
     post_id = db.IntegerProperty(required = True)
     user_id = db.IntegerProperty(required = True)
-    like = db.IntegerProperty()#required = True)
-    comment = db.TextProperty()#required = True)
+    comment = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
 
+# One Like per user. Up/Dn vote
+class Likes(db.Model):
+    post_id = db.IntegerProperty(required = True)
+    user_id = db.IntegerProperty(required = True)
+    like = db.IntegerProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    
 # /blog/?        
 class BlogFront(BlogHandler):
     def get(self):
         # if user logged in render blog else
         # redirect to login 
         #Get user name from cookie
-        uid_cookie_str = self.request.cookies.get('uid')
-        uid = check_secure_val(uid_cookie_str);
+        uid = 0
         username =""
+        uid_cookie_str = self.request.cookies.get('uid')
+        if uid_cookie_str :
+            uid = check_secure_val(uid_cookie_str);        
         if uid != 0:
             user = Users.get_by_id(uid)
             username = user.username;
@@ -140,7 +149,8 @@ class NewPost(BlogHandler):
             content = self.request.get('content')
 
             if subject and content:
-                p = Post(parent = blog_key(), subject = subject, content = content)
+                p = Post(parent = blog_key(), subject = subject, 
+                         content = content, created_by=uid)
                 p.put()
                 self.redirect('/blog/%s' % str(p.key().id()))
             else:
@@ -257,7 +267,8 @@ class Logout(BlogHandler):
         self.response.headers.add_header(
                 'Set-Cookie', 'uid=;Path=/;')
         self.redirect('/blog/login')
-            
+
+#Sign up  take to blog home
 class Signup(BlogHandler):
 
     def get(self):
@@ -320,7 +331,8 @@ class Signup(BlogHandler):
                 self.response.headers.add_header('Set-Cookie',
                     'uid=%s;Path=/' %uid_cookie)
                 #self.redirect('/blog/welcome?username=' + username)
-                self.redirect('/blog/welcome')            
+                #self.redirect('/blog/welcome')
+                self.redirect('/blog/')
 
 class Welcome(BlogHandler):
     def get(self):
@@ -338,6 +350,30 @@ class Welcome(BlogHandler):
         else:
             self.redirect('/blog/signup')
 
+class FlushDb(BlogHandler):
+    def get(self):
+        # Delete all Post
+        posts = Post.all()
+        for p in posts:
+            p.delete()
+
+        # Delete all users
+        users = Users.all()
+        for u in users:
+            u.delete()
+            
+        # Delete all comments
+        comments = Comments.all()
+        for c in comments:
+            c.delete()
+        
+        # Delete all likes
+        likes = Likes.all()
+        for l in likes:
+            l.delete()
+        self.redirect('/blog/signup');
+        
+
 app = webapp2.WSGIApplication([
        ('/', MainPage),
        ('/unit2/rot13', Rot13),
@@ -348,5 +384,6 @@ app = webapp2.WSGIApplication([
        ('/blog/?', BlogFront),
        ('/blog/([0-9]+)', PostPage),
        ('/blog/newpost', NewPost),
+       ('/blog/flushdb', FlushDb),
        ],
       debug=True)
