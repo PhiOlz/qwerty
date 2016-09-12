@@ -13,14 +13,25 @@
   <form action='/blog/comment/{{post.key().id()}}' method="post">
       <hidden name='post_id' value='{{post.key().id()}}'>
       <label for="comment">Comment:</label>
-      <textarea style='width: 500px; hieght:100px' name="comment"></textarea> 
+      <textarea rows=4 cols=80 name="comment"></textarea> 
       <div>
         <input type="submit"></div>
   </form>
   <hr>
   {% for c in coms %}
-    {{ c.comment | safe }}
-    <hr>
+    <div class="post-heading">
+        <div class="post-title">
+            Comments
+        </div>
+        <div class="post-date">
+            By: {{c.user_id  | getusername}} &nbsp;&nbsp;
+            {{c.created.strftime("%b %d, %Y")}}
+        </div>
+    </div>
+    <div>
+        {{ c.comment | escape }}
+    </div>
+    <br>
   {% endfor %}
     
 {% endblock %}
