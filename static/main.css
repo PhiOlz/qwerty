@@ -34,7 +34,8 @@ input[type=text] {
     font-family: monospace;
 }
 
-textarea {
+/*textarea */
+.newpost {
   width: 500px;
   height: 400px;
   font-size: 17px;

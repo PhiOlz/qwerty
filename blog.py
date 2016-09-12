@@ -13,12 +13,19 @@ from google.appengine.ext import db
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
+
 # create a flter to get user name from ID
 def getusername(uid):
     return Users.get_by_id(uid).username
-    
+# create a flter to get comments for a post
+def getcomments(post_id):
+    coms = db.GqlQuery("select * from Comments where post_id=" + post_id +
+                       " order by created desc")
+    return coms;
+
 #Register the filter with Environment
 jinja_env.filters['getusername'] = getusername
+jinja_env.filters['getcomments'] = getcomments
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -203,7 +210,57 @@ class NewPost(BlogHandler):
                             content=content, error=error, username = username)
         else:
             self.redirect('/blog/login')
+# Check if user is logged in, if not redirect to login.
+class CommentPost(BlogHandler):
+    def get(self, post_id):
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username):
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)                        
+            if post:
+                coms = getcomments(post_id)
+                self.render('comment.html', post=post, coms=coms, username = username)
+        else:
+            self.redirect('/blog/login')        
 
+    def post(self, post_id):
+        # Validate user
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        #post_id = self.get('post_id');
+        #Update post like count
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        username =""
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username):        
+            comment = self.request.get('comment')
+            if comment:
+                com = Comments(parent = blog_key(), 
+                         post_id = int(post_id), 
+                         user_id=uid, comment = comment)
+                com.put()
+                if post: 
+                    post.count_comment += 1;
+                    post.put()
+                # Find and update post id as well
+                self.redirect('/blog/%s' % str(post.key().id()))
+            else:
+                error = "comment, please!"
+                coms = getcomments(post_id)
+                self.render("comment.html", posts=posts,
+                                     coms=coms,
+                                     username = username)
+        else:
+            self.redirect('/blog/login')
 
 ###### Unit 2 HW's
 class Rot13(BlogHandler):
@@ -430,6 +487,7 @@ app = webapp2.WSGIApplication([
        ('/blog/([0-9]+)', PostPage),
        ('/blog/newpost', NewPost),
        ('/blog/likepost/([0-9]+)', LikePost),
+       ('/blog/comment/([0-9]+)', CommentPost),
        ('/blog/flushdb', FlushDb),
        ],
       debug=True)
