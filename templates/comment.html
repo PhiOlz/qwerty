@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="post-heading">
+    <div class="post-title">
+      {{post.subject}}
+    </div>
+    <div class="post-date">
+      By: {{post.created_by | getusername}} &nbsp;&nbsp;
+      {{post.created.strftime("%b %d, %Y")}}
+    </div>
+  </div>
+  <form action='/blog/comment/{{post.key().id()}}' method="post">
+      <hidden name='post_id' value='{{post.key().id()}}'>
+      <label for="comment">Comment:</label>
+      <textarea style='width: 500px; hieght:100px' name="comment"></textarea> 
+      <div>
+        <input type="submit"></div>
+  </form>
+  <hr>
+  {% for c in coms %}
+    {{ c.comment | safe }}
+    <hr>
+  {% endfor %}
+    
+{% endblock %}
