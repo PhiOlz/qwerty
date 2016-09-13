@@ -1,17 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h2>new post</h2>
-
-    <form method="post">
+    {% if p %}
+        <h2>Edit post</h2>
+        <form method="post" action='/blog/newpost/{{p.key().id()}}'>
+        <hidden name='post_id' value='{{p.key().id()}}' />
+    {% else %}
+        <h2>New Post</h2>
+        <form method="post" action='/blog/newpost/0'>
+        <hidden name='post_id' value='0' />
+    {% endif %}    
       <label>
-        <div>subject</div>
-        <input type="text" name="subject" value="{{subject}}">
+        <div>Subject</div>
+        {% if p: %}
+            <input type="text" name="subject" value="{{p.subject}}">
+        {% else %}
+            <input type="text" name="subject" value="">
+        {% endif %}
       </label>
 
       <label>
-        <div>blog</div>
-        <textarea class='newpost' name="content">{{content}}</textarea>
+        <div>Blog</div>
+        {% if p: %}
+            <textarea class='newpost' name="content">{{p.content}}</textarea>
+        {% else %}
+            <textarea class='newpost' name="content"></textarea>
+        {% endif%}
       </label>
 
       <div class="error">{{error}}</div>

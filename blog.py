@@ -17,6 +17,8 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 # create a flter to get user name from ID
 def getusername(uid):
     return Users.get_by_id(uid).username
+
+
 # create a flter to get comments for a post
 def getcomments(post_id):
     coms = db.GqlQuery("select * from Comments where post_id=" + post_id +
@@ -63,9 +65,9 @@ class Post(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
-    def render(self):
+    def render(self, user):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self)
+        return render_str("post.html", p = self, u=user)
 
 # User registration table
 # Every entity in the AppEngine has a unique key and id
@@ -94,13 +96,14 @@ class Likes(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     
 # /blog/?        
-class BlogFront(BlogHandler):
+class BlogFront(webapp2.RequestHandler):
     def get(self):
         # if user logged in render blog else
         # redirect to login 
         #Get user name from cookie
         uid = 0
         username =""
+        user = None
         uid_cookie_str = self.request.cookies.get('uid')
         if uid_cookie_str :
             uid = check_secure_val(uid_cookie_str);        
@@ -114,10 +117,13 @@ class BlogFront(BlogHandler):
         else:
             posts = db.GqlQuery("select * from Post order by created desc limit 10")
             #Enhance to take comments
-            self.render('front.html', posts = posts, username=username)
+            #self.render('front.html', posts = posts, u=user)
+            t = jinja_env.get_template('front.html')
+            self.response.out.write(t.render(posts=posts, u=user))
+            
 
 #Posting a page leads to a perma link.
-class PostPage(BlogHandler):
+class PostPage(webapp2.RequestHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
@@ -132,12 +138,14 @@ class PostPage(BlogHandler):
             user = Users.get_by_id(uid)
             username = user.username;
         if valid_username(username):
-            self.render("permalink.html", post = post, username=username)
+            #self.render("permalink.html", post = post, u=user)
+            t = jinja_env.get_template('permalink.html')
+            self.response.out.write(t.render(p=post, u=user))
         else:
             self.redirect('/blog/login')
 # type of self is webapp.RequestHandler
 # refresh the same page.
-class LikePost(BlogHandler):
+class LikePost(webapp2.RequestHandler):
     def get(self, post_id):
         uid_cookie_str = self.request.cookies.get('uid')
         uid = check_secure_val(uid_cookie_str);
@@ -173,59 +181,83 @@ class LikePost(BlogHandler):
 
 
 # Check if user is logged in, if not redirect to login.
-class NewPost(BlogHandler):
-    def get(self):
-        #Get user name from cookie
-        uid_cookie_str = self.request.cookies.get('uid')
-        uid = check_secure_val(uid_cookie_str);
-        username =""
-        if uid != 0:
-            user = Users.get_by_id(uid)
-            username = user.username;
-        if valid_username(username):
-            self.render('newpost.html', username = username)
-        else:
-            self.redirect('/blog/login')        
-
-    def post(self):
-        # Validate user
-        uid_cookie_str = self.request.cookies.get('uid')
-        uid = check_secure_val(uid_cookie_str);
-        username =""
-        if uid != 0:
-            user = Users.get_by_id(uid)
-            username = user.username;
-        if valid_username(username):        
-            subject = self.request.get('subject')
-            content = self.request.get('content')
-
-            if subject and content:
-                p = Post(parent = blog_key(), subject = subject, 
-                         content = content, created_by=uid)
-                p.put()
-                self.redirect('/blog/%s' % str(p.key().id()))
-            else:
-                error = "subject and content, please!"
-                self.render("newpost.html", subject=subject, 
-                            content=content, error=error, username = username)
-        else:
-            self.redirect('/blog/login')
-# Check if user is logged in, if not redirect to login.
-class CommentPost(BlogHandler):
+# Modify to user both new post and edit existing post
+class NewPost(webapp2.RequestHandler):
     def get(self, post_id):
         #Get user name from cookie
         uid_cookie_str = self.request.cookies.get('uid')
         uid = check_secure_val(uid_cookie_str);
-        username =""
+        user=None
+        post=None
+        if post_id:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            
         if uid != 0:
             user = Users.get_by_id(uid)
             username = user.username;
         if valid_username(username):
+            #self.render('newpost.html', u = user)
+            t = jinja_env.get_template('newpost.html')
+            self.response.out.write(t.render(p=post, u=user))
+        else:
+            self.redirect('/blog/login')        
+
+    def post(self, p_id):
+        # Validate user
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        user =None
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if user:
+            post_id = self.request.get('post_id')
+            subject = self.request.get('subject')
+            content = self.request.get('content')
+            post = None
+            # if post_id is valid - this is an edit
+            if post_id:
+                key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+                post = db.get(key)                        
+
+            if subject and content:
+                if post:
+                    post.subject = subject
+                    post.content = content
+                    post.put()
+                else:
+                    post = Post(parent = blog_key(), subject = subject, 
+                         content = content, created_by=uid)
+                    post.put()
+                self.redirect('/blog/%s' % str(post.key().id()))
+            else: # if updated with blank subject
+                error = "subject and content, please!"
+                #self.render("newpost.html", post_id=post_id, subject=subject, 
+                #            content=content, error=error, u = user)
+                t = jinja_env.get_template('newpost.html')
+                self.response.out.write(t.render(p=post, u=user))
+                
+        else:
+            self.redirect('/blog/login')
+
+# Check if user is logged in, if not redirect to login.
+class CommentPost(webapp2.RequestHandler):
+    def get(self, post_id):
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        user = None
+        if uid != 0:
+            user = Users.get_by_id(uid)
+        if user:
             key = db.Key.from_path('Post', int(post_id), parent=blog_key())
             post = db.get(key)                        
             if post:
                 coms = getcomments(post_id)
-                self.render('comment.html', post=post, coms=coms, username = username)
+                t = jinja_env.get_template('comment.html')
+                #self.render('comment.html', post=post, coms=coms, u = user)
+                self.response.out.write(t.render(post=post, coms=coms, u=user))
         else:
             self.redirect('/blog/login')        
 
@@ -237,11 +269,11 @@ class CommentPost(BlogHandler):
         #Update post like count
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
-        username =""
+        user = None
         if uid != 0:
             user = Users.get_by_id(uid)
             username = user.username;
-        if valid_username(username):        
+        if user :
             comment = self.request.get('comment')
             if comment:
                 com = Comments(parent = blog_key(), 
@@ -256,24 +288,11 @@ class CommentPost(BlogHandler):
             else:
                 error = "comment, please!"
                 coms = getcomments(post_id)
-                self.render("comment.html", posts=posts,
-                                     coms=coms,
-                                     username = username)
+                t = jinja_env.get_template('comment.html')
+                self.response.out.write(t.render(posts=posts, coms=coms, u=user))
+                #self.render("comment.html", posts=posts,coms=coms,u = user)
         else:
             self.redirect('/blog/login')
-
-###### Unit 2 HW's
-class Rot13(BlogHandler):
-    def get(self):
-        self.render('rot13-form.html')
-
-    def post(self):
-        rot13 = ''
-        text = self.request.get('text')
-        if text:
-            rot13 = text.encode('rot13')
-
-        self.render('rot13-form.html', text = rot13)
 
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
@@ -422,11 +441,11 @@ class Signup(BlogHandler):
                 # Save user in table
                 # No plain text password:
                 pass_digest = make_pw_hash(username, password)
-                u = Users(username = username,
+                user = Users(username = username,
                     password = pass_digest,
                     email = email);
-                u.put();
-                uid = u.key().id();
+                user.put();
+                uid = user.key().id();
                 # Set uid|hash - cookie.
                 uid_cookie = make_secure_val(str(uid))
                 self.response.headers.add_header('Set-Cookie',
@@ -440,14 +459,13 @@ class Welcome(BlogHandler):
         #Get user name from cookie
         uid_cookie_str = self.request.cookies.get('uid')
         uid = check_secure_val(uid_cookie_str);
-        username =""
+        user =""
         if uid != 0:
             user = Users.get_by_id(uid)
             username = user.username;
-        else: # try to get from URL
-            username = self.request.get('username')
-        if valid_username(username):
-            self.render('welcome.html', username = username)
+
+        if user:
+            self.render('welcome.html', u = user)
         else:
             self.redirect('/blog/signup')
 
@@ -478,14 +496,13 @@ class FlushDb(BlogHandler):
 
 app = webapp2.WSGIApplication([
        ('/', MainPage),
-       ('/unit2/rot13', Rot13),
        ('/blog/logout', Logout),
        ('/blog/login', Login),
        ('/blog/signup', Signup),
        ('/blog/welcome', Welcome),
        ('/blog/?', BlogFront),
        ('/blog/([0-9]+)', PostPage),
-       ('/blog/newpost', NewPost),
+       ('/blog/newpost/([0-9]+)', NewPost),
        ('/blog/likepost/([0-9]+)', LikePost),
        ('/blog/comment/([0-9]+)', CommentPost),
        ('/blog/flushdb', FlushDb),
