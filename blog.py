@@ -189,7 +189,7 @@ class NewPost(webapp2.RequestHandler):
         uid = check_secure_val(uid_cookie_str);
         user=None
         post=None
-        if post_id:
+        if int(post_id) > 0 :
             key = db.Key.from_path('Post', int(post_id), parent=blog_key())
             post = db.get(key)
             

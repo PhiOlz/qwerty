@@ -14,10 +14,17 @@
         <td align='left'>
             <a href="/blog" class="main-title">CS 253 Blog </a>
         </td><td align="right">
+            {% if u %}
             <a href="/blog/logout">Logout &nbsp;({{u.username}})</a>
+            {% endif %}
         </td></tr>
-        <tr><td>&nbsp;</td><td align='right'><a href="/blog/newpost"> Post a blog</a></td></tr>        
-        <tr><td colspan=2><hr></td></tr>        
+        <tr><td>&nbsp;</td><td align='right'>
+            {% if u %}
+                <!-- zero post id, indication for new post -->
+                <a href="/blog/newpost/0"> Post a blog</a>
+            {% endif %}
+            </td></tr>        
+        <tr><td colspan=2><hr></td></tr>
     </table>
     </header>
   <div id="content">

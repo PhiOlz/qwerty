@@ -1,16 +1,6 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
 
-<html>
-  <head>
-    <title>Unit 2 Rot 13</title>
-    <style type="text/css">
-      .label {text-align: right}
-      .error {color: red}
-    </style>
-
-  </head>
-
-  <body>
+{% block content %}
     <h2>Signup</h2>
     <form method="post">
       <table>
@@ -63,9 +53,7 @@
         </tr>
         <tr><td>&nbsp;</td><td><input type="submit"></td></tr>        
         <tr><td colspan=2>&nbsp;</td></tr>
-        <tr><td>&nbsp;</td><td>Already signed up <a href="/blog/login">Login</a></td></tr>        
+        <tr><td>&nbsp;</td><td>Already signed up <a href="/blog/login">Login</a></td></tr>
       </table>      
     </form>
-  </body>
-
-</html>
+{% endblock %}
