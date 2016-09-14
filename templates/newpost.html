@@ -29,7 +29,13 @@
       </label>
 
       <div class="error">{{error}}</div>
-
-      <input type="submit">
+      <input type="submit">&nbsp;&nbsp;&nbsp;
+      {% if p: %}
+        <input type="button" name='Cancel' value="Cancel"
+            onclick="window.location.href='/blog/{{p.key().id()}}'">
+      {% else %}
+        <input type="button" name='Cancel' value="Cancel"
+            onClick="window.location.href='/blog/'; return false;">
+      {% endif %}
     </form>
 {% endblock %}
