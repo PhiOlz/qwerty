@@ -189,6 +189,7 @@ class NewPost(webapp2.RequestHandler):
         uid = check_secure_val(uid_cookie_str);
         user=None
         post=None
+        # Can't handle zero - throws excption
         if int(post_id) > 0 :
             key = db.Key.from_path('Post', int(post_id), parent=blog_key())
             post = db.get(key)
@@ -217,9 +218,11 @@ class NewPost(webapp2.RequestHandler):
             content = self.request.get('content')
             post = None
             # if post_id is valid - this is an edit
-            if p_id:
+            if int(p_id) > 0:
+                # Handle failure- in case if a invalid key is provided.
                 key = db.Key.from_path('Post', int(p_id), parent=blog_key())
-                post = db.get(key)                        
+                if key:
+                    post = db.get(key)                        
 
             if subject and content:
                 if post:
@@ -315,7 +318,8 @@ class CommentPost(webapp2.RequestHandler):
             username = user.username;
         if user :
             comment = self.request.get('comment')
-            if comment:
+            # User can't comment his own blog            
+            if comment and post.created_by != uid :
                 com = Comments(parent = blog_key(), 
                          post_id = int(post_id), 
                          user_id=uid, comment = comment)
@@ -541,8 +545,17 @@ class DumpDb(BlogHandler):
         posts = Post.all()
         self.response.out.write("<table>")
         self.response.out.write("<tr><th>Blog Posts</th></tr>")
+        save_id=0
         for p in posts:
             self.response.out.write("<tr><td>" + str(p.key().id()) +"</td></tr>")
+            save_id = p.key().id()
+        # see if get by id works
+        post = Post.get_by_id(save_id)
+        if post == None:
+            self.response.out.write("<tr><td>Post.get_by_id(" + str(save_id) + ")=" + str(post) +"</td></tr>")        
+        else :
+            self.response.out.write("<tr><td>Post.get_by_id()=" + str(post.key().id()) +"</td></tr>")
+        
         # Dump all comments
         self.response.out.write("<tr><th>Comments</th></tr>")
         comments = Comments.all()
@@ -553,6 +566,14 @@ class DumpDb(BlogHandler):
         likes = Likes.all()
         for l in likes:
             self.response.out.write("<tr><td>" + str(l.post_id) + "</td></tr>")
+
+        # try invalid key
+        key = db.Key.from_path('Post', 101, parent=blog_key())
+        post = db.get(key)
+        if post:
+            self.response.out.write("<tr><td>id=101 returns post</td></tr>")
+        else :
+            self.response.out.write("<tr><td>id=101 return None</td></tr>")
             
 
 app = webapp2.WSGIApplication([
@@ -566,7 +587,7 @@ app = webapp2.WSGIApplication([
        ('/blog/newpost/([0-9]+)', NewPost),
        ('/blog/delpost/([0-9]+)', DelPost),
        ('/blog/likepost/([0-9]+)', LikePost),
-       ('/blog/comment/([0-9]+)', CommentPost),
+       ('/blog/comment/([0-9]+)', CommentPost), # post_id as a param
        ('/blog/flushdb', FlushDb),
        ('/blog/dumpdb', DumpDb),       
        ],
