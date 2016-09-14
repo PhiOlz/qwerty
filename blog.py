@@ -212,13 +212,13 @@ class NewPost(webapp2.RequestHandler):
             user = Users.get_by_id(uid)
             username = user.username;
         if user:
-            post_id = self.request.get('post_id')
+            #post_id = self.request.get('post_id')
             subject = self.request.get('subject')
             content = self.request.get('content')
             post = None
             # if post_id is valid - this is an edit
-            if post_id:
-                key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            if p_id:
+                key = db.Key.from_path('Post', int(p_id), parent=blog_key())
                 post = db.get(key)                        
 
             if subject and content:
@@ -240,6 +240,46 @@ class NewPost(webapp2.RequestHandler):
                 
         else:
             self.redirect('/blog/login')
+# Global function - all comments and likes with post.
+def deletePost(post_id):
+    if int(post_id) > 0 :
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        if post:
+            coms = db.GqlQuery(
+             "SELECT * FROM Comments WHERE post_id=" + str(post.key().id()))
+            for c in coms:
+                c.delete()
+            likes = db.GqlQuery(
+             "SELECT * FROM Likes WHERE post_id=" + str(post.key().id()))
+            for l in likes:
+                l.delete()
+            post.delete()
+            
+            
+# Check if user is logged in, if not redirect to login.
+# Delete post, comments and likes
+class DelPost(webapp2.RequestHandler):
+    def get(self, post_id):
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        user=None
+        post=None
+        if int(post_id) > 0 :
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username) and post:
+            # user is owner of the post
+            if int(uid) == post.created_by:
+                # delete blog and dependent
+                deletePost(post.key().id())
+        
+        self.redirect('/blog')        
 
 # Check if user is logged in, if not redirect to login.
 class CommentPost(webapp2.RequestHandler):
@@ -468,7 +508,8 @@ class Welcome(BlogHandler):
         else:
             self.redirect('/blog/signup')
 
-            
+# Debug only
+# Clean all database and start with sign up            
 class FlushDb(BlogHandler):
     def get(self):
         # Delete all Post
@@ -491,7 +532,28 @@ class FlushDb(BlogHandler):
         for l in likes:
             l.delete()
         self.redirect('/blog/signup');
-        
+
+# Debug only
+# Raw dump database
+class DumpDb(BlogHandler):
+    def get(self):
+        # dump all Post
+        posts = Post.all()
+        self.response.out.write("<table>")
+        self.response.out.write("<tr><th>Blog Posts</th></tr>")
+        for p in posts:
+            self.response.out.write("<tr><td>" + str(p.key().id()) +"</td></tr>")
+        # Dump all comments
+        self.response.out.write("<tr><th>Comments</th></tr>")
+        comments = Comments.all()
+        for c in comments:
+            self.response.out.write("<tr><td>" + str(c.post_id) +"</td></tr>")
+        # Dump all likes
+        self.response.out.write("<tr><th>Likes</th></tr>")
+        likes = Likes.all()
+        for l in likes:
+            self.response.out.write("<tr><td>" + str(l.post_id) + "</td></tr>")
+            
 
 app = webapp2.WSGIApplication([
        ('/', MainPage),
@@ -502,8 +564,10 @@ app = webapp2.WSGIApplication([
        ('/blog/?', BlogFront),
        ('/blog/([0-9]+)', PostPage),
        ('/blog/newpost/([0-9]+)', NewPost),
+       ('/blog/delpost/([0-9]+)', DelPost),
        ('/blog/likepost/([0-9]+)', LikePost),
        ('/blog/comment/([0-9]+)', CommentPost),
        ('/blog/flushdb', FlushDb),
+       ('/blog/dumpdb', DumpDb),       
        ],
       debug=True)

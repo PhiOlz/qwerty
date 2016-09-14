@@ -19,6 +19,8 @@
         <div class="post-comment">
             {% if u.key().id() == p.created_by %}
                 <a href='/blog/newpost/{{p.key().id()}}'>Edit Post</a>
+                &nbsp;&nbsp;&nbsp;
+                <a href='/blog/delpost/{{p.key().id()}}'>Delete Post</a>
             {% else %}
                 <a href='/blog/comment/{{p.key().id()}}'>View/Add Comments</a>
                 &nbsp;&nbsp;&nbsp;
