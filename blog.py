@@ -450,7 +450,6 @@ class Signup(BlogHandler):
                 uid_cookie = make_secure_val(str(uid))
                 self.response.headers.add_header('Set-Cookie',
                     'uid=%s;Path=/' %uid_cookie)
-                #self.redirect('/blog/welcome?username=' + username)
                 #self.redirect('/blog/welcome')
                 self.redirect('/blog/')
 
