@@ -375,6 +375,53 @@ class CommentPost(webapp2.RequestHandler):
         else:
             self.redirect('/blog/login')
 
+# Check if user is logged in, if not redirect to login.
+class EditComment(webapp2.RequestHandler):
+    def get(self, comment_id):
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        user = None
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            
+        if user and int(comment_id) > 0:
+            ckey = db.Key.from_path('Comments', int(comment_id), parent=blog_key())
+            com = db.get(ckey)        
+            if com:
+                pkey = db.Key.from_path('Post', int(com.post_id), parent=blog_key())
+                post = db.get(pkey)
+                t = jinja_env.get_template('comment-edit.html')
+                #self.render('comment.html', post=post, coms=coms, u = user)
+                self.response.out.write(t.render(post=post, com=com, u=user))
+        else:
+            self.redirect('/blog/login')        
+
+    def post(self, com_id):
+        # Validate user
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        #post_id = self.get('post_id');
+        #Update post like count
+        ckey = db.Key.from_path('Comments', int(com_id), parent=blog_key())
+        com = db.get(ckey)
+        user = None
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if user :
+            updated_comment = self.request.get('comment')
+            # User can update his own comment
+            if updated_comment and com.user_id == uid :
+                com.comment = updated_comment
+                com.put()
+                self.redirect('/blog/comment/%s' % str(com.post_id))
+            else:
+                # empty comment - lan to same page
+                self.redirect('/blog/editcom/%s' % str(com.key().id()))
+        else:
+            self.redirect('/blog/login')
+
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def valid_username(username):
@@ -648,6 +695,7 @@ app = webapp2.WSGIApplication([
        ('/blog/newpost/([0-9]+)', NewPost),
        ('/blog/delpost/([0-9]+)', DelPost),
        ('/blog/delcom/([0-9]+)', DelComment),
+       ('/blog/editcom/([0-9]+)', EditComment),
        ('/blog/likepost/([0-9]+)', LikePost),
        ('/blog/comment/([0-9]+)', CommentPost), # post_id as a param
        ('/blog/flushdb', FlushDb),
