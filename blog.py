@@ -10,6 +10,10 @@ from jinja2 import filters, environment
 #from string import letters
 from google.appengine.ext import db
 
+from dbmodel import Users
+from dbmodel import Comments
+from dbmodel import Likes
+
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
@@ -33,29 +37,7 @@ def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
 
-class BlogHandler(webapp2.RequestHandler):
-    def write(self, *a, **kw):
-        self.response.out.write(*a, **kw)
-
-    def render_str(self, template, **params):
-        return render_str(template, **params)
-
-    def render(self, template, **kw):
-        self.write(self.render_str(template, **kw))
-
-def render_post(response, post):
-    response.out.write('<b>' + post.subject + '</b><br>')
-    response.out.write(post.content)
-
-class MainPage(BlogHandler):
-  def get(self):
-      self.write('Hello, Udacity!')
-
-##### blog stuff
-
-def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
-
+# Module contains all storage tables
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
@@ -67,33 +49,33 @@ class Post(db.Model):
 
     def render(self, user):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self, u=user)
+#        return render_str("post.html", p = self, u=user)
+        t = jinja_env.get_template("post.html")
+        return t.render(p = self, u=user)        
 
-# User registration table
-# Every entity in the AppEngine has a unique key and id
-#Users().key().id()
-class Users(db.Model):
-    username = db.StringProperty(required = True)
-    password = db.TextProperty(required = True)
-    email = db.TextProperty()#(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
+class BlogHandler(webapp2.RequestHandler):
+    def write(self, *a, **kw):
+        self.response.out.write(*a, **kw)
 
-#Comment on blog posts by user
-# One user can post multiple comments
-# Comments are arranged by time created.
-class Comments(db.Model):
-    post_id = db.IntegerProperty(required = True)
-    user_id = db.IntegerProperty(required = True)
-    comment = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
+    def render_str(self, template, **params):
+        return render_str(template, **params)
 
-# One Like per user. Up/Dn vote
-class Likes(db.Model):
-    post_id = db.IntegerProperty(required = True)
-    user_id = db.IntegerProperty(required = True)
-    like = db.IntegerProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
+    def render(self, template, **kw):
+        self.write(self.render_str(template, **kw))
+
+def render_post(response, post):
+        response.out.write('<b>' + post.subject + '</b><br>')
+        response.out.write(post.content)
+
+class MainPage(BlogHandler):
+  def get(self):
+      self.write('Hello, Udacity!')
+
+##### blog stuff
+
+def blog_key(name = 'default'):
+    return db.Key.from_path('blogs', name)
+
     
 # /blog/?        
 class BlogFront(webapp2.RequestHandler):
