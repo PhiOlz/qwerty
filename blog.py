@@ -283,7 +283,44 @@ class DelPost(webapp2.RequestHandler):
                 deletePost(post.key().id())
         
         self.redirect('/blog')        
-
+# Check if user is logged in, if not redirect to login.
+# Delete a single comment
+class DelComment(webapp2.RequestHandler):
+    def get(self, comment_id):
+        #Get user name from cookie
+        uid_cookie_str = self.request.cookies.get('uid')
+        uid = check_secure_val(uid_cookie_str);
+        user=None
+        comment=None
+        post_id = None
+        if int(comment_id) > 0 :
+            #comment = Comments.get_by_id(int(comment_id))
+            #coms = db.GqlQuery(
+            #        "SELECT * FROM Comments WHERE id=" + str(comment_id))
+            #for c in coms:
+            #    comment = c            
+            key = db.Key.from_path('Comments', int(comment_id), parent=blog_key())
+            comment = db.get(key)
+            
+        if uid != 0:
+            user = Users.get_by_id(uid)
+            username = user.username;
+        if valid_username(username) and comment:
+            post_id=comment.post_id
+            # user is owner of the comment
+            if int(uid) == comment.user_id:
+                comment.delete()
+                # Decrement comment count in post.
+                pkey = db.Key.from_path('Post', int(post_id), parent=blog_key())
+                post = db.get(pkey)
+                post.count_comment -= 1
+                post.put()
+                
+        if post_id :
+            self.redirect('/blog/comment/' + str(post_id))
+        else :
+            self.redirect('/blog')
+        
 # Check if user is logged in, if not redirect to login.
 class CommentPost(webapp2.RequestHandler):
     def get(self, post_id):
@@ -544,10 +581,12 @@ class DumpDb(BlogHandler):
         # dump all Post
         posts = Post.all()
         self.response.out.write("<table>")
-        self.response.out.write("<tr><th>Blog Posts</th></tr>")
+        self.response.out.write("<tr><th>Blog Posts</th></tr>")        
         save_id=0
+        self.response.out.write("<tr><th>PostID</th><th>Subject</th></tr>")
         for p in posts:
-            self.response.out.write("<tr><td>" + str(p.key().id()) +"</td></tr>")
+            self.response.out.write("<tr><td>" + str(p.key().id()) + "</td>")
+            self.response.out.write("<td>p.subject</td></tr>")
             save_id = p.key().id()
         # see if get by id works
         post = Post.get_by_id(save_id)
@@ -557,16 +596,38 @@ class DumpDb(BlogHandler):
             self.response.out.write("<tr><td>Post.get_by_id()=" + str(post.key().id()) +"</td></tr>")
         
         # Dump all comments
-        self.response.out.write("<tr><th>Comments</th></tr>")
+        self.response.out.write("<tr><th>PostID</th><th>CommentID</th></tr>")
         comments = Comments.all()
+        comment_id = 0
         for c in comments:
-            self.response.out.write("<tr><td>" + str(c.post_id) +"</td></tr>")
+            self.response.out.write("<tr><td>" + str(c.post_id) +"</td>")
+            self.response.out.write("<td>" + str(c.key().id()) + "</td></tr>")
+            comment_id = c.key().id()
+        
         # Dump all likes
-        self.response.out.write("<tr><th>Likes</th></tr>")
+        self.response.out.write("<tr><th>PostID</th><th>LikeID</th></tr>")        
         likes = Likes.all()
         for l in likes:
-            self.response.out.write("<tr><td>" + str(l.post_id) + "</td></tr>")
+            self.response.out.write("<tr><td>" + str(l.post_id) + "</td>")
+            self.response.out.write("<td>" + str(l.key().id()) + "</td></tr>")
 
+        # test Comments get_by_id
+        if comment_id > 0:
+            c = Comments.get_by_id(comment_id)
+            if c:
+                self.response.out.write("<tr><td> Comments.get_by_id("+ str(comment_id) + ")")
+                selt.response.out.write("=" + c.key().id() + "</td></tr>")
+            else : 
+                self.response.out.write("<tr><td>Comments.get_by_id(id) return None</td></tr>")
+            coms = db.GqlQuery(
+                "SELECT * FROM Comments WHERE id=" + str(comment_id))
+            c = coms.fetch(1)
+            if c:
+                self.response.out.write("<tr><td>Select on Comments return a record.</td></tr>")
+        else:
+            self.response.out.write("<tr><td>Zero Comments in db</td></tr>")
+            
+        
         # try invalid key
         key = db.Key.from_path('Post', 101, parent=blog_key())
         post = db.get(key)
@@ -586,6 +647,7 @@ app = webapp2.WSGIApplication([
        ('/blog/([0-9]+)', PostPage),
        ('/blog/newpost/([0-9]+)', NewPost),
        ('/blog/delpost/([0-9]+)', DelPost),
+       ('/blog/delcom/([0-9]+)', DelComment),
        ('/blog/likepost/([0-9]+)', LikePost),
        ('/blog/comment/([0-9]+)', CommentPost), # post_id as a param
        ('/blog/flushdb', FlushDb),
