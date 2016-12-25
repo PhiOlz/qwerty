@@ -120,7 +120,7 @@ class NewPost(webapp2.RequestHandler):
                     post.put()
                 else:
                     post = Post(parent = blog_key(), subject = subject, 
-                         content = content, created_by=uid)
+                         content = content)
                     post.put()
                 self.redirect('/blog/%s' % str(post.key().id()))
             else: # if updated with blank subject
@@ -128,7 +128,7 @@ class NewPost(webapp2.RequestHandler):
                 #self.render("newpost.html", post_id=post_id, subject=subject, 
                 #            content=content, error=error, u = user)
                 t = jinja_env.get_template('newpost.html')
-                self.response.out.write(t.render(p=post, u=user))
+                self.response.out.write(t.render(p=post))
 # Global function - all comments and likes with post.
 def deletePost(post_id):
     if int(post_id) > 0 :
@@ -236,22 +236,11 @@ class FlushDb(BlogHandler):
         posts = Post.all()
         for p in posts:
             p.delete()
-
-        # Delete all users
-        users = Users.all()
-        for u in users:
-            u.delete()
             
         # Delete all comments
         comments = Comments.all()
         for c in comments:
             c.delete()
-        
-        # Delete all likes
-        likes = Likes.all()
-        for l in likes:
-            l.delete()
-        self.redirect('/blog/signup');
 
 # Debug only
 # Raw dump database
