@@ -226,33 +226,10 @@ class EditComment(webapp2.RequestHandler):
     def post(self, com_id):
         ckey = db.Key.from_path('Comments', int(com_id), parent=blog_key())
         com = db.get(ckey)
-            updated_comment = self.request.get('comment')
-            com.comment = updated_comment
-            com.put()
-            self.redirect('/blog/comment/%s' % str(com.post_id))
-USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
-def valid_username(username):
-    return username and USER_RE.match(username)
-
-PASS_RE = re.compile(r"^.{3,20}$")
-def valid_password(password):
-    return password and PASS_RE.match(password)
-
-EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
-def valid_email(email):
-    return not email or EMAIL_RE.match(email)
-
-## Cookie related functions
-SECRET='t0p5ecret'
-def hash_str(s):
-    #return hashlib.md5(s).hexdigest();
-    return hmac.new(SECRET, s).hexdigest();
-
-# Function takes a string 
-# and returns a string of the format: s|HASH
-def make_secure_val(s):
-    #return s+"|"+hash_str(s);
-    return '%s|%s' %(s, hash_str(s))   
+        updated_comment = self.request.get('comment')
+        com.comment = updated_comment
+        com.put()
+        self.redirect('/blog/comment/%s' % str(com.post_id))  
 class FlushDb(BlogHandler):
     def get(self):
         # Delete all Post
