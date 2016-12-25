@@ -6,12 +6,10 @@
       {{post.subject}}
     </div>
     <div class="post-date">
-      By: {{post.created_by | getusername}} &nbsp;&nbsp;
       {{post.created.strftime("%b %d, %Y")}}
     </div>
   </div>
   <!-- Only comment owner can edit comments -->
-  {% if u.key().id() == com.user_id %}
     <form action='/blog/editcom/{{com.key().id()}}' method="post">
       <hidden name='com_id' value='{{com.key().id()}}'>
       <label for="comment">Comment:</label>
@@ -20,5 +18,4 @@
         <input type="submit"></div>
     </form>
     <hr>
-  {% endif %}
 {% endblock %}
