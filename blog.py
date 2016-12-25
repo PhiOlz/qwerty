@@ -99,7 +99,7 @@ class NewPost(webapp2.RequestHandler):
             post = db.get(key)
         #self.render('newpost.html', u = user)
         t = jinja_env.get_template('newpost.html')
-        self.response.out.write(t.render(p=post, u=user)) 
+        self.response.out.write(t.render(p=post)) 
 
     def post(self, p_id):
             #post_id = self.request.get('post_id')
