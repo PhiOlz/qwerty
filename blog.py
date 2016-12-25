@@ -172,11 +172,11 @@ class DelComment(webapp2.RequestHandler):
             
         if comment:
             post_id=comment.post_id
-                comment.delete()
-                pkey = db.Key.from_path('Post', int(post_id), parent=blog_key())
-                post = db.get(pkey)
-                post.count_comment -= 1
-                post.put()
+            comment.delete()
+            pkey = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(pkey)
+            post.count_comment -= 1
+            post.put()
                 
         if post_id :
             self.redirect('/blog/comment/' + str(post_id))
