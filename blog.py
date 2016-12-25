@@ -70,7 +70,6 @@ def blog_key(name = 'default'):
 class BlogFront(webapp2.RequestHandler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10")
-        #Enhance to take comments
         t = jinja_env.get_template('front.html')
         self.response.out.write(t.render(posts=posts))
             
@@ -85,8 +84,8 @@ class PostPage(webapp2.RequestHandler):
             self.error(404)
             return
         #self.render("permalink.html", post = post, u=user)
-        t = jinja_env.get_template('permalink.html')
-        self.response.out.write(t.render(p=post))
+            t = jinja_env.get_template('permalink.html')
+            self.response.out.write(t.render(p=post))
 # type of self is webapp.RequestHandler
 # refresh the same page.
 
