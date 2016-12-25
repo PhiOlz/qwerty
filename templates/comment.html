@@ -6,12 +6,10 @@
       {{post.subject}}
     </div>
     <div class="post-date">
-      By: {{post.created_by | getusername}} &nbsp;&nbsp;
       {{post.created.strftime("%b %d, %Y")}}
     </div>
   </div>
   <!-- Blogger can't comment on his own blog - he can view comments -->
-  {% if u.key().id() != post.created_by %}
     <form action='/blog/comment/{{post.key().id()}}' method="post">
       <hidden name='post_id' value='{{post.key().id()}}'>
       <label for="comment">Comment:</label>
@@ -20,7 +18,6 @@
         <input type="submit"></div>
     </form>
     <hr>
-  {% endif %}
   <br>
   {% for c in coms %}
     <div class="post-heading">
@@ -28,7 +25,6 @@
             Comment
         </div>
         <div class="post-date">
-            By: {{c.user_id  | getusername}} &nbsp;&nbsp;
             {{c.created.strftime("%b %d, %Y")}}
         </div>
     </div>
@@ -38,18 +34,10 @@
     <div class="post-footer">
     <!-- Commentor can edit or delete his own comment. -->
         <div class="post-comment">
-            {% if u.key().id() == c.user_id %}
                 <a href='/blog/editcom/{{c.key().id()}}'>Edit Comment</a>                
-            {% else %}
-                &nbsp;
-            {% endif %}
         </div>
         <div class='post-likes'>
-            {% if u.key().id() == c.user_id %}
                 <a href='/blog/delcom/{{c.key().id()}}'>Delete Comment</a>
-            {% else %}
-                &nbsp;
-            {% endif %}
         </div>
     </div>    
     <br>
