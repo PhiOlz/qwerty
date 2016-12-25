@@ -197,20 +197,19 @@ class CommentPost(webapp2.RequestHandler):
     def post(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
-            comment = self.request.get('comment')
-                com = Comments(parent = blog_key(), 
+        comment = self.request.get('comment')
+        com = Comments(parent = blog_key(), 
                          post_id = int(post_id), 
-                         user_id=uid, comment = comment)
-                com.put()
-                if post: 
-                    post.count_comment += 1;
-                    post.put()
+                         comment = comment)
+        com.put()
+        if post: 
+          post.count_comment += 1;
+          post.put()
                 # Find and update post id as well
-                self.redirect('/blog/%s' % str(post.key().id()))
-                coms = getcomments(post_id)
-                t = jinja_env.get_template('comment.html')
-                self.response.out.write(t.render(posts=posts, coms=coms))
-                #self.render("comment.html", posts=posts,coms=coms,u = user)
+        self.redirect('/blog/%s' % str(post.key().id()))
+        coms = getcomments(post_id)
+        t = jinja_env.get_template('comment.html')
+        self.response.out.write(t.render(posts=posts, coms=coms))
 class EditComment(webapp2.RequestHandler):
     def get(self, comment_id):
             
