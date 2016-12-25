@@ -5,7 +5,6 @@
     </div>
 
     <div class="post-date">
-      By: {{p.created_by | getusername}} &nbsp;&nbsp;
       {{p.created.strftime("%b %d, %Y")}}
     </div>
   </div>
@@ -17,23 +16,18 @@
     <!--<form action='/blog/comment' method='get'> -->
     <!-- Blogger can edit his own blog. Others can like and comment -->
         <div class="post-comment">
-            {% if u.key().id() == p.created_by %}
                 <a href='/blog/newpost/{{p.key().id()}}'>Edit Post</a>
                 &nbsp;&nbsp;&nbsp;
                 <a href='/blog/delpost/{{p.key().id()}}'>Delete Post</a>
                 &nbsp;&nbsp;&nbsp;
-                <a href='/blog/comment/{{p.key().id()}}'>View Comments</a>
-            {% else %}
                 <a href='/blog/comment/{{p.key().id()}}'>View/Add Comments</a>
                 &nbsp;&nbsp;&nbsp;
                 <a href='/blog/likepost/{{p.key().id()}}'>Like It</a>
                 <!--<input type=submit value="Add Comment"> </input>-->
-            {% endif %}
         </div>
         <div class='post-likes'>
             <b>Comments:&nbsp;</b> {{p.count_comment}}
             &nbsp;&nbsp;&nbsp;&nbsp;
-            <b>Likes:&nbsp</b> {{p.count_like}}
         </div>
     <!-- </form> -->
   </div>
