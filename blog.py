@@ -193,8 +193,6 @@ class CommentPost(webapp2.RequestHandler):
                 t = jinja_env.get_template('comment.html')
                 #self.render('comment.html', post=post, coms=coms, u = user)
                 self.response.out.write(t.render(post=post, coms=coms))
-        else:
-            self.redirect('/blog/login')        
 
     def post(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
